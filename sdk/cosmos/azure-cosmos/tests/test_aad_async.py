@@ -4,7 +4,7 @@ import asyncio
 import unittest
 import pytest
 
-from azure.identity import ManagedIdentityCredential
+from azure.identity.aio import ManagedIdentityCredential
 from azure.cosmos import exceptions
 from azure.cosmos.aio import CosmosClient
 
@@ -43,15 +43,15 @@ class TestAADAsync(unittest.IsolatedAsyncioTestCase):
         container_id = "TestMsFabricContainerNew"
         partition_key_value = "partition1"
 
-        msi_client_id = os.getenv("AZURE_CLIENT_ID")  # optional
-        credential = ManagedIdentityCredential(client_id=msi_client_id)
+        # Use async ManagedIdentityCredential (wraps IMDS under the hood)
+        credential = ManagedIdentityCredential()
 
-
-        token1 = await asyncio.to_thread(credential.get_token, "https://cosmos.azure.com/.default")
+        # Get tokens
+        token1 = await credential.get_token("https://cosmos.azure.com/.default")
         print(token1)
-        token2 = await asyncio.to_thread(credential.get_token, "https://cosmos.azure.com/.default")
+        token2 = await credential.get_token("https://cosmos.azure.com/.default")
         print(token2)
-        token3 = await asyncio.to_thread(credential.get_token, "https://cosmos.azure.com/.default")
+        token3 = await credential.get_token("https://cosmos.azure.com/.default")
         print(token3)
 
         try:
