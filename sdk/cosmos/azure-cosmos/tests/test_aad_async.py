@@ -3,8 +3,10 @@ import uuid
 import asyncio
 import unittest
 import pytest
+import jwt   # pip install pyjwt
+import datetime
 
-from azure.identity.aio import ManagedIdentityCredential
+from azure.identity.aio import DefaultAzureCredential
 from azure.cosmos import exceptions
 from azure.cosmos.aio import CosmosClient
 
@@ -32,6 +34,14 @@ async def _create_one(host: str, database_id: str, container_id: str, pk: str, i
         await client.close()
 
 
+async def log_token(cred, scope: str, label: str):
+    token = await cred.get_token(scope)
+    decoded = jwt.decode(token.token, options={"verify_signature": False})
+    exp_time = datetime.datetime.utcfromtimestamp(token.expires_on)
+    print(f"[{label}] oid={decoded.get('oid')}, jti={decoded.get('jti')}, exp={exp_time}")
+    return token
+
+
 @pytest.mark.cosmosEmulator
 class TestAADAsync(unittest.IsolatedAsyncioTestCase):
     async def test_aad_scope_override_async(self):
@@ -43,16 +53,13 @@ class TestAADAsync(unittest.IsolatedAsyncioTestCase):
         container_id = "TestMsFabricContainerNew"
         partition_key_value = "partition1"
 
-        # Use async ManagedIdentityCredential (wraps IMDS under the hood)
-        credential = ManagedIdentityCredential()
+        credential = DefaultAzureCredential()
+        scope = "https://cosmos.azure.com/.default"
 
-        # Get tokens
-        token1 = await credential.get_token("https://cosmos.azure.com/.default")
-        print(token1)
-        token2 = await credential.get_token("https://cosmos.azure.com/.default")
-        print(token2)
-        token3 = await credential.get_token("https://cosmos.azure.com/.default")
-        print(token3)
+        # Log and compare tokens
+        token1 = await log_token(credential, scope, "token1")
+        token2 = await log_token(credential, scope, "token2")
+        token3 = await log_token(credential, scope, "token3")
 
         try:
             tasks = [
